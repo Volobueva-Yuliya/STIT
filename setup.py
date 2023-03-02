@@ -12,7 +12,7 @@ setup(
     },
     packages=find_packages(),
     license='',
-    python_requires=">=3.8.*",
+    python_requires=">=3.8",
     install_requires=[
         'pillow>=9.0.1',
         'dlib>=19.22.1',
