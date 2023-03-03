@@ -11,14 +11,14 @@ from torchvision import transforms
 from torchvision.transforms.functional import to_tensor
 from tqdm import tqdm
 
-import models.seg_model_2
-from configs import paths_config
-from editings.latent_editor import LatentEditor
-from utils.alignment import crop_faces_by_quads, calc_alignment_coefficients
-from utils.data_utils import make_dataset
-from utils.edit_utils import add_texts_to_image_vertical, paste_image_mask, paste_image
-from utils.image_utils import concat_images_horizontally, tensor2pil
-from utils.models_utils import load_generators
+import dcstit.models.seg_model_2
+from dcstit.configs import paths_config
+from dcstit.editings.latent_editor import LatentEditor
+from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients
+from dcstit.utils.data_utils import make_dataset
+from dcstit.utils.edit_utils import add_texts_to_image_vertical, paste_image_mask, paste_image
+from dcstit.utils.image_utils import concat_images_horizontally, tensor2pil
+from dcstit.utils.models_utils import load_generators
 
 
 def calc_mask(inversion, segmentation_model):

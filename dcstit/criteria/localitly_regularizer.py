@@ -2,8 +2,8 @@ import torch
 import numpy as np
 import wandb
 from criteria import l2_loss
-from configs import hyperparameters
-from configs import global_config
+from dcstit.configs import hyperparameters
+from dcstit.configs import global_config
 
 
 class SpaceRegularizer:

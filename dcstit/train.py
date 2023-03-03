@@ -2,11 +2,11 @@ import json
 
 from tqdm import tqdm
 
-from utils.models_utils import save_tuned_G
+from dcstit.utils.models_utils import save_tuned_G
 
-from datasets.image_list_dataset import ImageListDataset
-from training.coaches.coach import Coach
-from utils.data_utils import make_dataset
+from dcstit.datasets.image_list_dataset import ImageListDataset
+from dcstit.training.coaches.coach import Coach
+from dcstit.utils.data_utils import make_dataset
 import os
 
 import click
@@ -16,8 +16,8 @@ import wandb
 from PIL import Image
 from torchvision import transforms
 
-from configs import paths_config, global_config, hyperparameters
-from utils.alignment import crop_faces, calc_alignment_coefficients
+from dcstit.configs import paths_config, global_config, hyperparameters
+from dcstit.utils.alignment import crop_faces, calc_alignment_coefficients
 
 
 def save_image(image: Image.Image, output_folder, image_name, image_index, ext='jpg'):

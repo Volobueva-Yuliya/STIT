@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from configs import global_config, hyperparameters
 from utils import log_utils
-import dnnlib
+from dcstit import dnnlib
 
 
 def project(

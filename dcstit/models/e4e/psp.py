@@ -1,8 +1,8 @@
-from configs import paths_config
+from dcstit.configs import paths_config
 import torch
 from torch import nn
-from models.e4e.encoders import psp_encoders
-from models.e4e.stylegan2.model import Generator
+from dcstit.models.e4e.encoders import psp_encoders
+from dcstit.models.e4e.stylegan2.model import Generator
 
 
 def get_keys(d, name):
