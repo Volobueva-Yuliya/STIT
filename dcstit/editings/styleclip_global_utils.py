@@ -4,7 +4,7 @@ import click
 import torch
 from tqdm import tqdm
 
-from configs import paths_config
+from dcstit.configs import paths_config
 try:
     import clip
 except ImportError:

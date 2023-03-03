@@ -3,9 +3,9 @@ import os.path
 import numpy as np
 import torch
 
-from configs.paths_config import interfacegan_folder
-from editings import styleclip_global_utils
-from utils.edit_utils import get_affine_layers, load_stylespace_std, to_styles, w_to_styles
+from dcstit.configs.paths_config import interfacegan_folder
+from dcstit.editings import styleclip_global_utils
+from dcstit.utils.edit_utils import get_affine_layers, load_stylespace_std, to_styles, w_to_styles
 
 
 class LatentEditor:

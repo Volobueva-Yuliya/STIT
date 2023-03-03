@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import wandb
-from criteria import l2_loss
+from dcstit.criteria import l2_loss
 from dcstit.configs import hyperparameters
 from dcstit.configs import global_config
 
