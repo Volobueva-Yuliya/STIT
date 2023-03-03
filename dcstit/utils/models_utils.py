@@ -9,6 +9,13 @@ from dcstit.models.e4e.psp import pSp
 from dcstit.training.networks import Generator
 
 
+class dcstitUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        if module.startswith('dnnlib') or module.startswith('torch_utils'):
+            module = 'dcstit.' + module
+        return super().find_class(module, name)
+
+
 def save_tuned_G(generator, pivots, quads, run_id):
     generator = copy.deepcopy(generator).cpu()
     pivots = copy.deepcopy(pivots).cpu()
@@ -33,7 +40,7 @@ def load_old_G():
 
 def load_g(file_path):
     with open(file_path, 'rb') as f:
-        old_G = pickle.load(f)['G_ema'].to(global_config.device).eval()
+        old_G =  dcstitUnpickler(f).load()['G_ema'].to(global_config.device).eval()
         old_G = old_G.float()
     return old_G
 
