@@ -10,7 +10,7 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter1d
 from tqdm import tqdm
 
-from configs import paths_config
+from dcstit.configs import paths_config
 
 
 def get_landmark(filepath, predictor, detector=None, fa=None):

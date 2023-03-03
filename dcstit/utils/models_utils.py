@@ -4,9 +4,9 @@ from argparse import Namespace
 
 import torch
 
-from configs import paths_config, global_config
-from models.e4e.psp import pSp
-from training.networks import Generator
+from dcstit.configs import paths_config, global_config
+from dcstit.models.e4e.psp import pSp
+from dcstit.training.networks import Generator
 
 
 def save_tuned_G(generator, pivots, quads, run_id):
