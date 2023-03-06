@@ -1,6 +1,6 @@
 import json
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from dcstit.utils.models_utils import save_tuned_G
 

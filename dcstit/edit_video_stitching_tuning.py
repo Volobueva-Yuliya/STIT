@@ -3,6 +3,7 @@ import io
 import json
 import os
 from collections import defaultdict
+from tqdm.auto import tqdm
 
 import click
 import imageio
@@ -136,7 +137,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     else:
         edits, is_style_input = latent_editor.get_interfacegan_edits(pivots, edit_name, edit_range)
 
-    for edits_list, direction, factor in edits:
+    for edits_list, direction, factor in tqdm(edits):
         video_frames = defaultdict(list)
         for i, (orig_image, crop, quad, inverse_transform) in \
                 tqdm(enumerate(zip(orig_images, crops, quads, inverse_transforms)), total=len(orig_images)):
