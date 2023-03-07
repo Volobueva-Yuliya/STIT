@@ -110,7 +110,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
           beta, config, content_loss_lambda, border_loss_threshold):
     orig_files = make_dataset(input_folder)
     orig_files = orig_files[start_frame:end_frame]
-    segmentation_model = models.seg_model_2.BiSeNet(19).eval().cuda().requires_grad_(False)
+    segmentation_model = dcstit.models.seg_model_2.BiSeNet(19).eval().cuda().requires_grad_(False)
     segmentation_model.load_state_dict(torch.load(paths_config.segmentation_model_path))
 
     gen, orig_gen, pivots, quads = load_generators(run_name)
@@ -198,12 +198,12 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
             if output_frames:
                 frames_dir = os.path.join(output_folder, 'frames', folder_name)
                 os.makedirs(frames_dir, exist_ok=True)
-                save_image(inversion_projection, os.path.join(frames_dir, f'pti_{i:04d}.jpeg'))
-                save_image(orig_image, os.path.join(frames_dir, f'source_{i:04d}.jpeg'))
-                save_image(edit_projection, os.path.join(frames_dir, f'edit_{i:04d}.jpeg'))
-                save_image(optimized_projection, os.path.join(frames_dir, f'optimized_{i:04d}.jpeg'))
-                save_image(optimized_projection_feathered,
-                           os.path.join(frames_dir, f'optimized_feathering_{i:04d}.jpeg'))
+                # save_image(inversion_projection, os.path.join(frames_dir, f'pti_{i:04d}.jpeg'))
+                # save_image(orig_image, os.path.join(frames_dir, f'source_{i:04d}.jpeg'))
+                save_image(edit_projection, os.path.join(frames_dir, f'_edit_{i:04d}.jpeg'))
+                # save_image(optimized_projection, os.path.join(frames_dir, f'optimized_{i:04d}.jpeg'))
+                # save_image(optimized_projection_feathered,
+                #            os.path.join(frames_dir, f'optimized_feathering_{i:04d}.jpeg'))
 
             if debug:
                 border_mask_image = tensor2pil(border_mask.mul(2).sub(1))
