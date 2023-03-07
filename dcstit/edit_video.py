@@ -10,7 +10,6 @@ import torchvision.transforms.functional
 from torch.nn import functional as F
 from torchvision import transforms
 from torchvision.transforms.functional import to_tensor
-from tqdm import tqdm
 
 import dcstit.models.seg_model_2
 from dcstit.configs import paths_config

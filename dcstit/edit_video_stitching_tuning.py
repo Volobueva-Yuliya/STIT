@@ -13,7 +13,7 @@ from PIL import Image, ImageChops
 from torch.nn import functional as F
 from torchvision import transforms
 from torchvision.transforms.functional import to_tensor
-from tqdm import tqdm, trange
+from tqdm import trange
 
 import dcstit.models.seg_model_2
 from dcstit.configs import hyperparameters, paths_config
