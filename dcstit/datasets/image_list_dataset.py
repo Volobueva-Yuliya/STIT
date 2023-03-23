@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-
+from PIL import Image
 
 class ImageListDataset(Dataset):
 
@@ -13,10 +13,12 @@ class ImageListDataset(Dataset):
 
     def __getitem__(self, index):
         image = self.images[index]
+        print(image)
         name = self.names[index] if self.names is not None else str(index)
-        from_im = image.convert('RGB')
+        from_im = Image.open(image)
 
         if self.source_transform:
             from_im = self.source_transform(from_im)
 
         return name, from_im
+

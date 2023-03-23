@@ -8,6 +8,7 @@ from dcstit.datasets.image_list_dataset import ImageListDataset
 from dcstit.training.coaches.coach import Coach
 from dcstit.utils.data_utils import make_dataset
 import os
+import glob
 
 import click
 import numpy as np
@@ -77,24 +78,25 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     files = files[start_frame:end_frame]
     print(f'Number of images: {len(files)}')
     image_size = 1024
-    print('Aligning images')
-    crops, orig_images, quads = crop_faces(image_size, files, scale,
-                                           center_sigma=center_sigma, xy_sigma=xy_sigma, use_fa=use_fa)
-    print('Aligning completed')
+    # print('Aligning images')
+    # crops, orig_images, quads = crop_faces(image_size, files, scale,
+    #                                        center_sigma=center_sigma, xy_sigma=xy_sigma, use_fa=use_fa)
+    # print('Aligning completed')
 
-
+    crops = sorted(glob.glob(f'{input_folder}/*.[jpeg][jpg][png]'))
     ds = ImageListDataset(crops, transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])]))
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+        transforms.Resize(image_size)]))
     coach = Coach(ds, use_wandb)
 
     ws = coach.train()
 
-    save_tuned_G(coach.G, ws, quads, global_config.run_name)
+    save_tuned_G(coach.G, ws, None, global_config.run_name)
 
-    inverse_transforms = [
-        calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
-        for quad in quads]
+    # inverse_transforms = [
+    #     calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
+    #     for quad in quads]
 
     gen = coach.G.requires_grad_(False).eval()
 
@@ -102,12 +104,12 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     with open(os.path.join(output_folder, 'opts.json'), 'w') as f:
         json.dump(config, f)
 
-    for i, (coeffs, crop, orig_image, w) in tqdm(
-            enumerate(zip(inverse_transforms, crops, orig_images, ws)), total=len(ws)):
+    for i, (crop, w) in tqdm(
+            enumerate(zip(crops, ws)), total=len(ws)):
         w = w[None]
-        pasted_image = paste_image(coeffs, crop, orig_image)
+        # pasted_image = paste_image(coeffs, crop, orig_image)
 
-        save_image(pasted_image, output_folder, 'projected', i)
+        # save_image(pasted_image, output_folder, 'projected', i)
         with torch.no_grad():
             inversion = gen.synthesis(w, noise_mode='const', force_fp32=True)
             pivot = coach.original_G.synthesis(w, noise_mode='const', force_fp32=True)
@@ -116,9 +118,10 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
         save_image(pivot, output_folder, 'pivot', i)
         save_image(inversion, output_folder, 'inversion', i)
-        save_image(paste_image(coeffs, pivot, orig_image), output_folder, 'pivot_projected', i)
-        save_image(paste_image(coeffs, inversion, orig_image), output_folder, 'inversion_projected', i)
+        # save_image(paste_image(coeffs, pivot, orig_image), output_folder, 'pivot_projected', i)
+        # save_image(paste_image(coeffs, inversion, orig_image), output_folder, 'inversion_projected', i)
 
 
 if __name__ == '__main__':
     main()
+
