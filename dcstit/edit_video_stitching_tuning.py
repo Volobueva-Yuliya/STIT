@@ -4,6 +4,7 @@ import json
 import os
 from collections import defaultdict
 from tqdm.auto import tqdm
+import glob
 
 import click
 import imageio
@@ -103,6 +104,7 @@ def main(**config):
     _main(**config, config=config)
 
 
+# +
 def _main(input_folder, output_folder, start_frame, end_frame, run_name,
           edit_range, edit_type, edit_name, inner_mask_dilation,
           outer_mask_dilation, whole_image_border,
@@ -116,11 +118,14 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     gen, orig_gen, pivots, quads = load_generators(run_name)
     image_size = 1024
 
-    crops, orig_images = crop_faces_by_quads(image_size, orig_files, quads)
+#     crops, orig_images = crop_faces_by_quads(image_size, orig_files, quads)
 
-    inverse_transforms = [
-        calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
-        for quad in quads]
+    # inverse_transforms = [
+    #     calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
+    #     for quad in quads]
+    crops = sorted(glob.glob(f'{input_folder}/*.[jpeg][jpg][png]'))
+
+    
     if freeze_fine_layers is not None:
         pivots_mean = torch.mean(pivots, dim=0, keepdim=True).expand_as(pivots)
         pivots = torch.cat([pivots[:, :freeze_fine_layers], pivots_mean[:, freeze_fine_layers:]], dim=1)
@@ -139,8 +144,8 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
     for edits_list, direction, factor in tqdm(edits):
         video_frames = defaultdict(list)
-        for i, (orig_image, crop, quad, inverse_transform) in \
-                tqdm(enumerate(zip(orig_images, crops, quads, inverse_transforms)), total=len(orig_images)):
+        for i, (crop) in \
+                tqdm(enumerate(crops), total=len(crops)):
             w_interp = pivots[i][None]
             if is_style_input:
                 w_edit_interp = [style[i][None] for style in edits_list]
@@ -152,95 +157,97 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
             inversion = gen.synthesis(w_interp, noise_mode='const', force_fp32=True)
             border_pixels = outer_mask_dilation
-
+            crop = Image.open(crop)
             crop_tensor = to_tensor(crop)[None].mul(2).sub(1).cuda()
             content_mask, border_mask, full_mask = calc_masks(crop_tensor, segmentation_model, border_pixels,
                                                               inner_mask_dilation, outer_mask_dilation,
                                                               whole_image_border)
             inversion = tensor2pil(inversion)
-            inversion_projection = paste_image(inverse_transform, inversion, orig_image)
+            # inversion_projection = paste_image(inverse_transform, inversion)
 
-            optimized_tensor = optimize_border(gen, crop_tensor, edited_tensor,
-                                               w_edit_interp, border_mask=border_mask, content_mask=content_mask,
-                                               optimize_generator=True, num_steps=num_steps, loss_l2=l2,
-                                               is_style_input=is_style_input, content_loss_lambda=content_loss_lambda,
-                                               border_loss_threshold=border_loss_threshold)
+#             optimized_tensor = optimize_border(gen, crop_tensor, edited_tensor,
+#                                                w_edit_interp, border_mask=border_mask, content_mask=content_mask,
+#                                                optimize_generator=True, num_steps=num_steps, loss_l2=l2,
+#                                                is_style_input=is_style_input, content_loss_lambda=content_loss_lambda,
+#                                                border_loss_threshold=border_loss_threshold)
 
-            video_frames[f'optimized_edits/{direction}/{factor}'].append(
-                tensor2pil(optimized_tensor)
-            )
+#             video_frames[f'optimized_edits/{direction}/{factor}'].append(
+#                 tensor2pil(optimized_tensor)
+#             )
 
-            optimized_image = tensor2pil(optimized_tensor)
+#             optimized_image = tensor2pil(optimized_tensor)
             edited_image = tensor2pil(edited_tensor)
 
             full_mask_image = tensor2pil(full_mask.mul(2).sub(1))
 
-            edit_projection = paste_image_mask(inverse_transform, edited_image, orig_image, full_mask_image, radius=0)
-            optimized_projection = paste_image_mask(inverse_transform, optimized_image, orig_image, full_mask_image,
-                                                    radius=0)
+#             edit_projection = paste_image_mask(inverse_transform, edited_image, crop, full_mask_image, radius=0)
+#             optimized_projection = paste_image_mask(inverse_transform, optimized_image, crop, full_mask_image,
+#                                                     radius=0)
 
-            optimized_projection_feathered = paste_image_mask(inverse_transform, optimized_image, orig_image,
-                                                              full_mask_image,
-                                                              radius=outer_mask_dilation // 2)
+#             optimized_projection_feathered = paste_image_mask(inverse_transform, optimized_image, crop,
+#                                                               full_mask_image,
+#                                                               radius=outer_mask_dilation // 2)
 
             folder_name = f'{direction}/{factor}'
 
-            video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection)
-            video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
+            # video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection)
+            # video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
 
-            video_frames[folder_name].append(video_frame)
+#             video_frames[folder_name].append(video_frame)
 
-            video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection_feathered)
-            video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
+#             video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection_feathered)
+#             video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
 
-            video_frames[f'{folder_name}/feathering'].append(video_frame)
+#             video_frames[f'{folder_name}/feathering'].append(video_frame)
 
             if output_frames:
                 frames_dir = os.path.join(output_folder, 'frames', folder_name)
                 os.makedirs(frames_dir, exist_ok=True)
                 # save_image(inversion_projection, os.path.join(frames_dir, f'pti_{i:04d}.jpeg'))
                 # save_image(orig_image, os.path.join(frames_dir, f'source_{i:04d}.jpeg'))
-                save_image(edit_projection, os.path.join(frames_dir, f'_edit_{i:04d}.jpeg'))
+                save_image(edited_image, os.path.join(frames_dir, f'_edit_{i:04d}.jpeg'))
                 # save_image(optimized_projection, os.path.join(frames_dir, f'optimized_{i:04d}.jpeg'))
                 # save_image(optimized_projection_feathered,
                 #            os.path.join(frames_dir, f'optimized_feathering_{i:04d}.jpeg'))
 
-            if debug:
-                border_mask_image = tensor2pil(border_mask.mul(2).sub(1))
-                inner_mask_image = tensor2pil(content_mask.mul(2).sub(1))
+#             if debug:
+#                 border_mask_image = tensor2pil(border_mask.mul(2).sub(1))
+#                 inner_mask_image = tensor2pil(content_mask.mul(2).sub(1))
 
-                video_frames[f'masks/{direction}/{factor}'].append(
-                    concat_images_horizontally(
-                        border_mask_image,
-                        inner_mask_image,
-                        full_mask_image
-                    ))
+#                 video_frames[f'masks/{direction}/{factor}'].append(
+#                     concat_images_horizontally(
+#                         border_mask_image,
+#                         inner_mask_image,
+#                         full_mask_image
+#                     ))
 
-                inner_image = optimized_projection.copy()
-                outer_mask_image = ImageChops.invert(inner_mask_image)
+#                 inner_image = optimized_projection.copy()
+#                 outer_mask_image = ImageChops.invert(inner_mask_image)
 
-                full_mask_projection = full_mask_image.transform(orig_image.size, Image.PERSPECTIVE, inverse_transform,
-                                                                 Image.BILINEAR)
-                outer_mask_projection = outer_mask_image.transform(orig_image.size, Image.PERSPECTIVE,
-                                                                   inverse_transform,
-                                                                   Image.BILINEAR)
-                inner_image.putalpha(full_mask_projection)
-                outer_image = optimized_projection.copy()
-                outer_image.putalpha(outer_mask_projection)
+#                 full_mask_projection = full_mask_image.transform(orig_image.size, Image.PERSPECTIVE, inverse_transform,
+#                                                                  Image.BILINEAR)
+#                 outer_mask_projection = outer_mask_image.transform(orig_image.size, Image.PERSPECTIVE,
+#                                                                    inverse_transform,
+#                                                                    Image.BILINEAR)
+#                 inner_image.putalpha(full_mask_projection)
+#                 outer_image = optimized_projection.copy()
+#                 outer_image.putalpha(outer_mask_projection)
 
-                masked = concat_images_horizontally(inner_image, outer_image)
-                video_frames[f'masked/{folder_name}'].append(masked)
+#                 masked = concat_images_horizontally(inner_image, outer_image)
+#                 video_frames[f'masked/{folder_name}'].append(masked)
 
-                frame_data = create_dump_file(border_mask_image, crop, full_mask_image, inner_mask_image,
-                                              inverse_transform, optimized_image, orig_image, quad, edited_image)
-                os.makedirs(os.path.join(output_folder, 'dumps', folder_name), exist_ok=True)
-                torch.save(frame_data, os.path.join(output_folder, 'dumps', folder_name, f'{i}.pt'))
+#                 frame_data = create_dump_file(border_mask_image, crop, full_mask_image, inner_mask_image,
+#                                               inverse_transform, optimized_image, orig_image, quad, edited_image)
+#                 os.makedirs(os.path.join(output_folder, 'dumps', folder_name), exist_ok=True)
+#                 torch.save(frame_data, os.path.join(output_folder, 'dumps', folder_name, f'{i}.pt'))
 
-        for folder_name, frames in video_frames.items():
-            folder_path = os.path.join(output_folder, folder_name)
-            os.makedirs(folder_path, exist_ok=True)
-            imageio.mimwrite(os.path.join(folder_path, 'out.mp4'), frames, fps=25, output_params=['-vf', 'fps=25'])
+#         for folder_name, frames in video_frames.items():
+#             folder_path = os.path.join(output_folder, folder_name)
+#             os.makedirs(folder_path, exist_ok=True)
+#             imageio.mimwrite(os.path.join(folder_path, 'out.mp4'), frames, fps=25, output_params=['-vf', 'fps=25'])
 
+
+# -
 
 def create_dump_file(border_mask_image, crop, full_mask_image, inner_mask_image, inverse_transform, optimized_image,
                      orig_image, quad, edited_image):
@@ -312,3 +319,4 @@ def masked_l2(input, target, mask, loss_l2):
 
 if __name__ == '__main__':
     main()
+
