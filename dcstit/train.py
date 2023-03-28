@@ -21,9 +21,6 @@ from scipy.ndimage import gaussian_filter1d
 from dcstit.configs import paths_config, global_config, hyperparameters
 from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients, compute_transform
 
-from kasane.fshd.FSHDIMG import FSHDJPG
-from kasane.utils.io import generate_presigned_url_from_path, get_filesystem_from_path
-
 
 def save_image(image: Image.Image, output_folder, image_name, image_index, ext='jpg'):
     if ext == 'jpeg' or ext == 'jpg':
@@ -88,6 +85,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     originals = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
     originals = sorted(originals)
     
+    #compute quads
     cs, xs, ys = [], [], []
     for _, path in tqdm(files):
         c, x, y = compute_transform(path, scale=1.0)
@@ -108,6 +106,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
     quads = list(quads)
 
+    #crops
     crops, orig_images = crop_faces_by_quads(image_size, files, quads)
     
     ds = ImageListDataset(originals, transforms.Compose([

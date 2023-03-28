@@ -3,6 +3,7 @@ import io
 import json
 import os
 from collections import defaultdict
+import numpy as np
 
 import click
 import imageio
@@ -14,12 +15,13 @@ from torchvision import transforms
 from torchvision.transforms.functional import to_tensor
 from tqdm import trange
 from tqdm.auto import tqdm
+from scipy.ndimage import gaussian_filter1d
 
 import dcstit.models.seg_model_2
 from dcstit.configs import hyperparameters, paths_config
 from dcstit.edit_video import save_image
 from dcstit.editings.latent_editor import LatentEditor
-from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients
+from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients, compute_transform
 from dcstit.utils.data_utils import make_dataset
 from dcstit.utils.edit_utils import add_texts_to_image_vertical, paste_image, paste_image_mask
 from dcstit.utils.image_utils import concat_images_horizontally, tensor2pil
@@ -110,10 +112,34 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
           beta, config, content_loss_lambda, border_loss_threshold):
     orig_files = make_dataset(input_folder)
     orig_files = orig_files[start_frame:end_frame]
-    segmentation_model = models.seg_model_2.BiSeNet(19).eval().cuda().requires_grad_(False)
+    segmentation_model = dcstit.models.seg_model_2.BiSeNet(19).eval().cuda().requires_grad_(False)
     segmentation_model.load_state_dict(torch.load(paths_config.segmentation_model_path))
 
     gen, orig_gen, pivots, quads = load_generators(run_name)
+
+    cs, xs, ys = [], [], []
+    for _, path in tqdm(orig_files):
+        c, x, y = compute_transform(path, scale=1.0)
+        cs.append(c)
+        xs.append(x)
+        ys.append(y)
+
+    center_sigma = 1.0
+    xy_sigma = 3.0
+    cs = np.stack(cs)
+    xs = np.stack(xs)
+    ys = np.stack(ys)
+    if center_sigma != 0:
+        cs = gaussian_filter1d(cs, sigma=center_sigma, axis=0)
+
+    if xy_sigma != 0:
+        xs = gaussian_filter1d(xs, sigma=xy_sigma, axis=0)
+        ys = gaussian_filter1d(ys, sigma=xy_sigma, axis=0)
+
+    quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
+    quads = list(quads)
+
+    
     image_size = 1024
 
     crops, orig_images = crop_faces_by_quads(image_size, orig_files, quads)
