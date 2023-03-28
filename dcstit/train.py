@@ -16,9 +16,13 @@ import torch
 import wandb
 from PIL import Image
 from torchvision import transforms
+from scipy.ndimage import gaussian_filter1d
 
 from dcstit.configs import paths_config, global_config, hyperparameters
-from dcstit.utils.alignment import crop_faces, calc_alignment_coefficients
+from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients, compute_transform
+
+from kasane.fshd.FSHDIMG import FSHDJPG
+from kasane.utils.io import generate_presigned_url_from_path, get_filesystem_from_path
 
 
 def save_image(image: Image.Image, output_folder, image_name, image_index, ext='jpg'):
@@ -81,11 +85,32 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     # print('Aligning images')
     # crops, orig_images, quads = crop_faces(image_size, files, scale,
     #                                        center_sigma=center_sigma, xy_sigma=xy_sigma, use_fa=use_fa)
-    # print('Aligning completed')
-    # crops = sorted(glob.glob(f'{input_folder}/*.[jpeg][jpg][png]'))
-    crops = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
-    crops = sorted(crops)
-    ds = ImageListDataset(crops, transforms.Compose([
+    originals = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
+    originals = sorted(originals)
+    
+    cs, xs, ys = [], [], []
+    for _, path in tqdm(files):
+        c, x, y = compute_transform(path, scale=1.0)
+        cs.append(c)
+        xs.append(x)
+        ys.append(y)
+
+    cs = np.stack(cs)
+    xs = np.stack(xs)
+    ys = np.stack(ys)
+    if center_sigma != 0:
+        cs = gaussian_filter1d(cs, sigma=center_sigma, axis=0)
+
+    if xy_sigma != 0:
+        xs = gaussian_filter1d(xs, sigma=xy_sigma, axis=0)
+        ys = gaussian_filter1d(ys, sigma=xy_sigma, axis=0)
+
+    quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
+    quads = list(quads)
+
+    crops, orig_images = crop_faces_by_quads(image_size, files, quads)
+    
+    ds = ImageListDataset(originals, transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
         transforms.Resize(image_size)]))
@@ -95,9 +120,9 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
     save_tuned_G(coach.G, ws, None, global_config.run_name)
 
-    # inverse_transforms = [
-    #     calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
-    #     for quad in quads]
+    inverse_transforms = [
+        calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
+        for quad in quads]
 
     gen = coach.G.requires_grad_(False).eval()
 
@@ -105,23 +130,21 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     with open(os.path.join(output_folder, 'opts.json'), 'w') as f:
         json.dump(config, f)
 
-    for i, (crop, w) in tqdm(
-            enumerate(zip(crops, ws)), total=len(ws)):
-        w = w[None]
-        # pasted_image = paste_image(coeffs, crop, orig_image)
+        for i, (coeffs, crop, orig_image, w) in tqdm(enumerate(zip(inverse_transforms, crops, orig_images, ws)), total=len(ws)):
+            w = w[None]
+            pasted_image = paste_image(coeffs, crop, orig_image)
 
-        # save_image(pasted_image, output_folder, 'projected', i)
-        with torch.no_grad():
-            inversion = gen.synthesis(w, noise_mode='const', force_fp32=True)
-            pivot = coach.original_G.synthesis(w, noise_mode='const', force_fp32=True)
-            inversion = to_pil_image(inversion)
-            pivot = to_pil_image(pivot)
+            save_image(pasted_image, output_folder, 'projected', i)
+            with torch.no_grad():
+                inversion = gen.synthesis(w, noise_mode='const', force_fp32=True)
+                pivot = coach.original_G.synthesis(w, noise_mode='const', force_fp32=True)
+                inversion = to_pil_image(inversion)
+                pivot = to_pil_image(pivot)
 
-        save_image(pivot, output_folder, 'pivot', i)
-        save_image(inversion, output_folder, 'inversion', i)
-        # save_image(paste_image(coeffs, pivot, orig_image), output_folder, 'pivot_projected', i)
-        # save_image(paste_image(coeffs, inversion, orig_image), output_folder, 'inversion_projected', i)
-
+            save_image(pivot, output_folder, 'pivot', i)
+            save_image(inversion, output_folder, 'inversion', i)
+            save_image(paste_image(coeffs, pivot, orig_image), output_folder, 'pivot_projected', i)
+            save_image(paste_image(coeffs, inversion, orig_image), output_folder, 'inversion_projected', i)
 
 if __name__ == '__main__':
     main()

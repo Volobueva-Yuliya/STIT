@@ -9,8 +9,12 @@ import skimage.io as io
 from PIL import Image
 from scipy.ndimage import gaussian_filter1d
 from tqdm import tqdm
+import fsspec
 
 from dcstit.configs import paths_config
+
+from kasane.fshd.FSHDIMG import FSHDJPG
+from kasane.utils.io import generate_presigned_url_from_path, get_filesystem_from_path
 
 
 def get_landmark(filepath, predictor, detector=None, fa=None):
@@ -110,8 +114,12 @@ def crop_image(filepath, output_size, quad, enable_padding=False):
     return img
 
 
-def compute_transform(filepath, predictor, detector=None, scale=1.0, fa=None):
-    lm = get_landmark(filepath, predictor, detector, fa)
+def compute_transform(filepath, scale=1.0):
+    input_filesystem, _ = get_filesystem_from_path(filepath)
+    fs = fsspec.filesystem(input_filesystem)
+    with fs.open(filepath) as file:
+        fshdjpg = FSHDJPG.load_frombuffer(file.read())
+    lm = fshdjpg.get_landmarks()
     if lm is None:
         raise Exception(f'Did not detect any faces in image: {filepath}')
     lm_chin = lm[0: 17]  # left-right
