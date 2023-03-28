@@ -118,28 +118,6 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
     gen, orig_gen, pivots, quads = load_generators(run_name)
 
-    cs, xs, ys = [], [], []
-    for _, path in tqdm(orig_files):
-        c, x, y = compute_transform(path, scale=1.0)
-        cs.append(c)
-        xs.append(x)
-        ys.append(y)
-
-    center_sigma = 1.0
-    xy_sigma = 3.0
-    cs = np.stack(cs)
-    xs = np.stack(xs)
-    ys = np.stack(ys)
-    if center_sigma != 0:
-        cs = gaussian_filter1d(cs, sigma=center_sigma, axis=0)
-
-    if xy_sigma != 0:
-        xs = gaussian_filter1d(xs, sigma=xy_sigma, axis=0)
-        ys = gaussian_filter1d(ys, sigma=xy_sigma, axis=0)
-
-    quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
-    quads = list(quads)
-
     originals = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
     originals = sorted(originals)
     

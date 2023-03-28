@@ -112,7 +112,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     coach = Coach(ds, use_wandb)
     ws = coach.train()
 
-    save_tuned_G(coach.G, ws, None, global_config.run_name)
+    save_tuned_G(coach.G, ws, quads, global_config.run_name)
 
     inverse_transforms = [
         calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
