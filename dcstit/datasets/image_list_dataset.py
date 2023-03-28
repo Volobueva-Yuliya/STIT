@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 from PIL import Image
+from dcstit.utils.alignment import crop_image
 
 class ImageListDataset(Dataset):
 
