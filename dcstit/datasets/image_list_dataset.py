@@ -13,7 +13,6 @@ class ImageListDataset(Dataset):
 
     def __getitem__(self, index):
         image = self.images[index]
-        print(image)
         name = self.names[index] if self.names is not None else str(index)
         from_im = Image.open(image)
 

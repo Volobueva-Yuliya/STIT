@@ -82,8 +82,9 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     # crops, orig_images, quads = crop_faces(image_size, files, scale,
     #                                        center_sigma=center_sigma, xy_sigma=xy_sigma, use_fa=use_fa)
     # print('Aligning completed')
-
-    crops = sorted(glob.glob(f'{input_folder}/*.[jpeg][jpg][png]'))
+    # crops = sorted(glob.glob(f'{input_folder}/*.[jpeg][jpg][png]'))
+    crops = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
+    crops = sorted(crops)
     ds = ImageListDataset(crops, transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),

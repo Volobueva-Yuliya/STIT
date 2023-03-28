@@ -83,7 +83,7 @@ def w_to_styles(w, affine_layers):
     return styles
 
 
-def paste_image_mask(inverse_transform, image, dst_image, mask, radius=0, sigma=0.0):
+def paste_image_mask(image, dst_image, mask, radius=0, sigma=0.0, inverse_transform=None):
     image_masked = image.copy().convert('RGBA')
     pasted_image = dst_image.copy().convert('RGBA')
     if radius != 0:
@@ -97,7 +97,10 @@ def paste_image_mask(inverse_transform, image, dst_image, mask, radius=0, sigma=
     else:
         image_masked.putalpha(mask)
 
-    projected = image_masked.transform(dst_image.size, Image.PERSPECTIVE, inverse_transform,
+    if inverse_transform is None:
+        projected = image_masked
+    else:
+        projected = image_masked.transform(dst_image.size, Image.PERSPECTIVE, inverse_transform,
                                        Image.BILINEAR)
     pasted_image.alpha_composite(projected)
     return pasted_image
