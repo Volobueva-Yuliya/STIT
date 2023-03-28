@@ -16,6 +16,7 @@ from torchvision.transforms.functional import to_tensor
 from tqdm import trange
 from tqdm.auto import tqdm
 from scipy.ndimage import gaussian_filter1d
+import glob
 
 import dcstit.models.seg_model_2
 from dcstit.configs import hyperparameters, paths_config
@@ -139,10 +140,12 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
     quads = list(quads)
 
+    originals = [f for f_ in [glob.glob(f'{input_folder}/{e}') for e in ('*.jpg', '*.png', '*.jpeg')] for f in f_]
+    originals = sorted(originals)
     
     image_size = 1024
 
-    crops, orig_images = crop_faces_by_quads(image_size, orig_files, quads)
+    crops, orig_images = crop_faces_by_quads(image_size, originals, quads)
 
     inverse_transforms = [
         calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])

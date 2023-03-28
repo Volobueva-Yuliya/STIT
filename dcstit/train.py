@@ -19,7 +19,7 @@ from torchvision import transforms
 from scipy.ndimage import gaussian_filter1d
 
 from dcstit.configs import paths_config, global_config, hyperparameters
-from dcstit.utils.alignment import crop_faces_by_quads, calc_alignment_coefficients, compute_transform
+from dcstit.utils.alignment import calc_alignment_coefficients, compute_transform, crop_faces_by_quads
 
 
 def save_image(image: Image.Image, output_folder, image_name, image_index, ext='jpg'):
@@ -105,16 +105,11 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
     quads = np.stack([cs - xs - ys, cs - xs + ys, cs + xs + ys, cs + xs - ys], axis=1)
     quads = list(quads)
-
-    #crops
-    crops, orig_images = crop_faces_by_quads(image_size, files, quads)
     
-    ds = ImageListDataset(originals, transforms.Compose([
+    ds = ImageListDataset(originals, quads, image_size, transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        transforms.Resize(image_size)]))
+        transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])]))
     coach = Coach(ds, use_wandb)
-
     ws = coach.train()
 
     save_tuned_G(coach.G, ws, None, global_config.run_name)
@@ -125,6 +120,8 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
     gen = coach.G.requires_grad_(False).eval()
 
+    crops, orig_images = crop_faces_by_quads(image_size, originals, quads)
+    
     os.makedirs(output_folder, exist_ok=True)
     with open(os.path.join(output_folder, 'opts.json'), 'w') as f:
         json.dump(config, f)
