@@ -147,6 +147,30 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     else:
         edits, is_style_input = latent_editor.get_interfacegan_edits(pivots, edit_name, edit_range)
 
+        
+    video_dir = os.path.join(output_folder, 'video')
+    os.makedirs(video_dir, exist_ok=True)
+            
+    writers = [
+    FFmpegWriter(f'{video_dir}/optimized_edits.mp4', inputdict={"-r": "25"}, outputdict={
+    "-c:v": "h264",
+    "-crf": "18",
+    "-preset": "veryfast",
+    "-vsync": "0", 
+    }),
+   FFmpegWriter(f'{video_dir}/project.mp4', inputdict={"-r": "25"}, outputdict={
+    "-c:v": "h264",
+    "-crf": "18",
+    "-preset": "veryfast",
+    "-vsync": "0", 
+    }),
+    FFmpegWriter(f'{video_dir}/feathering_project.mp4', inputdict={"-r": "25"}, outputdict={
+    "-c:v": "h264",
+    "-crf": "18",
+    "-preset": "veryfast",
+    "-vsync": "0", 
+    })]
+            
     for edits_list, direction, factor in edits:
         video_frames = defaultdict(list)
         for i, (orig_image, crop, quad, inverse_transform) in \
@@ -178,22 +202,6 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
 
             folder_name = f'{direction}/{factor}'
 
-            video_dir = os.path.join(output_folder, 'video', folder_name)
-            os.makedirs(video_dir, exist_ok=True)
-            
-            writer = FFmpegWriter(f'{video_dir}/optimized_edits.mp4', inputdict={"-r": "25"}, outputdict={
-            "-c:v": "h264",
-            "-crf": "18",
-            "-preset": "veryfast",
-            "-vsync": "0", 
-            })
-            
-            # video_frames[f'optimized_edits/{direction}/{factor}'].append(
-            #     tensor2pil(optimized_tensor)
-            # )
-            
-            writer.writeFrame(np.array(tensor2pil(optimized_tensor)))
-
             optimized_image = tensor2pil(optimized_tensor)
             edited_image = tensor2pil(edited_tensor)
 
@@ -220,39 +228,22 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
                 os.makedirs(optimized_dir, exist_ok=True)
                 
                 save_image(inversion_projection, os.path.join(pti_dir, f'pti_{i:06d}.jpeg'))
-                # save_image(orig_image, os.path.join(frames_dir, f'source_{i:04d}.jpeg'))
                 save_image(edit_projection, os.path.join(edit_dir, f'edit_{i:06d}.jpeg'))
                 save_image(optimized_projection, os.path.join(optimized_dir, f'optimized_{i:06d}.jpeg'))
                 save_image(optimized_projection_feathered, os.path.join(optimized_feathering_dir, f'optimized_feathering_{i:06d}.jpeg'))
 
-                
-                
-            
-            writer = FFmpegWriter(f'{video_dir}/project.mp4', inputdict={"-r": "25"}, outputdict={
-            "-c:v": "h264",
-            "-crf": "18",
-            "-preset": "veryfast",
-            "-vsync": "0", 
-            })
-            
-            video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection)
-            video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
-            
-            writer.writeFrame(np.array(video_frame))
-            
-            # video_frames[folder_name].append(video_frame)
+            video_frame_optimized_projection = concat_images_horizontally(orig_image, edit_projection, optimized_projection)
+            video_frame_optimized_projection = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame_optimized_projection)
 
-            video_frame = concat_images_horizontally(orig_image, edit_projection, optimized_projection_feathered)
-            video_frame = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame)
-            writer = FFmpegWriter(f'{video_dir}/feathering_project.mp4', inputdict={"-r": "25"}, outputdict={
-            "-c:v": "h264",
-            "-crf": "18",
-            "-preset": "veryfast",
-            "-vsync": "0", 
-            })
+            video_frame_feathered = concat_images_horizontally(orig_image, edit_projection, optimized_projection_feathered)
+            video_frame_feathered = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame_feathered)
             
-            writer.writeFrame(np.array(video_frame)[-1])
-            # video_frames[f'{folder_name}/feathering'].append(video_frame)
+            list_video_frames = [cv2.resize(np.array(optimized_image), (512, 512)), 
+                                 cv2.resize(np.array(video_frame_optimized_projection), (1024, 768)),
+                                 cv2.resize(np.array(video_frame_feathered), ((1024, 768)))]
+            
+            for (writer, frame) in zip(writers, list_video_frames):
+                writer.writeFrame(np.array(frame))
             
             if debug:
                 border_mask_image = tensor2pil(border_mask.mul(2).sub(1))
@@ -284,13 +275,8 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
                                               inverse_transform, optimized_image, orig_image, quad, edited_image)
                 os.makedirs(os.path.join(output_folder, 'dumps', folder_name), exist_ok=True)
                 torch.save(frame_data, os.path.join(output_folder, 'dumps', folder_name, f'{i}.pt'))
-    writer.close()
-    writer.close()
-    writer.close()
-        # for folder_name, frames in video_frames.items():
-        #     folder_path = os.path.join(output_folder, folder_name)
-        #     os.makedirs(folder_path, exist_ok=True)
-        #     imageio.mimwrite(os.path.join(folder_path, 'out.mp4'), frames, fps=25, output_params=['-vf', 'fps=25'])
+    for writer in writers:
+        writer.close()
 
 
 def create_dump_file(border_mask_image, crop, full_mask_image, inner_mask_image, inverse_transform, optimized_image,
