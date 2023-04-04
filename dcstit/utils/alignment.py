@@ -10,6 +10,7 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter1d
 from tqdm import tqdm
 import fsspec
+from pathlib import Path
 
 from dcstit.configs import paths_config
 
@@ -190,12 +191,15 @@ def crop_faces(IMAGE_SIZE, files, scale, center_sigma=0.0, xy_sigma=0.0, use_fa=
 def crop_faces_by_quads(IMAGE_SIZE, files, quads):
     orig_images = []
     crops = []
+    names = []
     for quad, path in tqdm(zip(quads, files), total=len(quads)):
+        name = Path(path).stem
         crop = crop_image(path, IMAGE_SIZE, quad.copy())
         orig_image = Image.open(path)
         orig_images.append(orig_image)
         crops.append(crop)
-    return crops, orig_images
+        names.append(name)
+    return crops, orig_images, names
 
 
 def calc_alignment_coefficients(pa, pb):

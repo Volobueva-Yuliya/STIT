@@ -126,7 +126,7 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
     
     image_size = 1024
 
-    crops, orig_images = crop_faces_by_quads(image_size, originals, quads)
+    crops, orig_images, names = crop_faces_by_quads(image_size, originals, quads)
 
     inverse_transforms = [
         calc_alignment_coefficients(quad + 0.5, [[0, 0], [0, image_size], [image_size, image_size], [image_size, 0]])
@@ -173,8 +173,8 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
             
     for edits_list, direction, factor in edits:
         video_frames = defaultdict(list)
-        for i, (orig_image, crop, quad, inverse_transform) in \
-                tqdm(enumerate(zip(orig_images, crops, quads, inverse_transforms)), total=len(orig_images)):
+        for i, (orig_image, crop, quad, inverse_transform, name) in \
+                tqdm(enumerate(zip(orig_images, crops, quads, inverse_transforms, names)), total=len(orig_images)):
             w_interp = pivots[i][None]
             if is_style_input:
                 w_edit_interp = [style[i][None] for style in edits_list]
@@ -201,7 +201,6 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
                                                border_loss_threshold=border_loss_threshold)
 
             folder_name = f'{direction}/{factor}'
-
             optimized_image = tensor2pil(optimized_tensor)
             edited_image = tensor2pil(edited_tensor)
 
@@ -227,11 +226,13 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
                 optimized_dir = os.path.join(frames_dir, 'optimized', folder_name)
                 os.makedirs(optimized_dir, exist_ok=True)
                 
-                save_image(inversion_projection, os.path.join(pti_dir, f'pti_{i:06d}.jpeg'))
-                save_image(edit_projection, os.path.join(edit_dir, f'edit_{i:06d}.jpeg'))
-                save_image(optimized_projection, os.path.join(optimized_dir, f'optimized_{i:06d}.jpeg'))
-                save_image(optimized_projection_feathered, os.path.join(optimized_feathering_dir, f'optimized_feathering_{i:06d}.jpeg'))
+                save_image(inversion_projection, os.path.join(pti_dir, f'{name}.png'))
+                # save_image(orig_image, os.path.join(frames_dir, f'source_{i:04d}.jpeg'))
+                save_image(edit_projection, os.path.join(edit_dir, f'{name}.png'))
+                save_image(optimized_projection, os.path.join(optimized_dir, f'{name}.png'))
+                save_image(optimized_projection_feathered, os.path.join(optimized_feathering_dir, f'{name}.png'))
 
+                      
             video_frame_optimized_projection = concat_images_horizontally(orig_image, edit_projection, optimized_projection)
             video_frame_optimized_projection = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame_optimized_projection)
 
@@ -239,8 +240,8 @@ def _main(input_folder, output_folder, start_frame, end_frame, run_name,
             video_frame_feathered = add_texts_to_image_vertical(['original', 'mask', 'stitching tuning'], video_frame_feathered)
             
             list_video_frames = [cv2.resize(np.array(optimized_image), (512, 512)), 
-                                 cv2.resize(np.array(video_frame_optimized_projection), (1024, 768)),
-                                 cv2.resize(np.array(video_frame_feathered), ((1024, 768)))]
+                                 cv2.resize(np.array(video_frame_optimized_projection), (1920, 1080)),
+                                 cv2.resize(np.array(video_frame_feathered), ((1920, 1080)))]
             
             for (writer, frame) in zip(writers, list_video_frames):
                 writer.writeFrame(np.array(frame))
